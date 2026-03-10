@@ -85,7 +85,7 @@ export function PerfTestPage() {
   const [minInput, setMinInput] = useState(128);
   const [maxInput, setMaxInput] = useState(1024);
   const [step, setStep] = useState(128);
-  const [maxOutput, setMaxOutput] = useState(128);
+  const [maxOutput, setMaxOutput] = useState(2048);
   const [structureLen, setStructureLen] = useState(4);
 
   // Test state
