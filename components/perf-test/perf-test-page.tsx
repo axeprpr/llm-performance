@@ -11,7 +11,7 @@ import {
   Trash2,
   Eye,
   ClipboardList,
-  Zap,
+  BarChart3,
   Settings,
   Bookmark,
   Languages,
@@ -358,7 +358,7 @@ export function PerfTestPage() {
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 lg:px-6">
           <div className="flex items-center gap-3">
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Zap className="size-4" />
+              <BarChart3 className="size-4" />
             </div>
             <div>
               <h1 className="text-sm font-semibold leading-none">{t("brand.tagline")}</h1>
