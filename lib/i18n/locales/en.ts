@@ -24,6 +24,12 @@ const en = {
   "config.apiKeyPlaceholder": "sk-...",
   "config.modelName": "Model Name",
   "config.modelNamePlaceholder": "gpt-4o",
+  "config.fetchModels": "Fetch",
+  "config.fetchingModels": "Fetching...",
+  "config.fetchModelsSuccess": "{count} models loaded",
+  "config.fetchModelsFailed": "Failed to fetch models, please enter manually",
+  "config.selectModel": "Select a model",
+  "config.manualInput": "Or enter manually",
 
   // Presets
   "preset.title": "Model Presets",

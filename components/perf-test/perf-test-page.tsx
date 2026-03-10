@@ -15,6 +15,8 @@ import {
   Settings,
   Bookmark,
   Languages,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import {
   Chart as ChartJS,
@@ -64,6 +66,8 @@ export function PerfTestPage() {
   const [requestUrl, setRequestUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [modelName, setModelName] = useState("");
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
 
   // Presets
   const [presets, setPresets] = useState<ModelPreset[]>([]);
@@ -100,6 +104,72 @@ export function PerfTestPage() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   }, []);
+
+  // Fetch models from /models endpoint
+  const fetchModels = useCallback(async () => {
+    if (!requestUrl.trim()) {
+      showToast(t("valid.fillRequired"), "error");
+      return;
+    }
+    setIsFetchingModels(true);
+    try {
+      // Derive base URL: strip /chat/completions or similar suffix to get /models
+      let baseUrl = requestUrl.trim();
+      // Remove trailing slash
+      baseUrl = baseUrl.replace(/\/+$/, '');
+      // Try to find the base: remove /chat/completions, /completions, etc.
+      const suffixes = ['/chat/completions', '/completions', '/v1/chat/completions', '/v1/completions'];
+      let modelsUrl = '';
+      for (const suffix of suffixes) {
+        if (baseUrl.endsWith(suffix)) {
+          modelsUrl = baseUrl.slice(0, -suffix.length) + '/v1/models';
+          break;
+        }
+      }
+      // If URL ends with /v1, just append /models
+      if (!modelsUrl && baseUrl.endsWith('/v1')) {
+        modelsUrl = baseUrl + '/models';
+      }
+      // Fallback: replace last path segment with "models"
+      if (!modelsUrl) {
+        const url = new URL(baseUrl);
+        const pathParts = url.pathname.split('/').filter(Boolean);
+        if (pathParts.length > 0) {
+          pathParts[pathParts.length - 1] = 'models';
+        } else {
+          pathParts.push('models');
+        }
+        url.pathname = '/' + pathParts.join('/');
+        modelsUrl = url.toString();
+      }
+
+      const headers: Record<string, string> = {};
+      if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+      const resp = await fetch(modelsUrl, { headers });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+
+      // OpenAI format: { data: [{ id: "model-name" }, ...] }
+      let models: string[] = [];
+      if (data.data && Array.isArray(data.data)) {
+        models = data.data.map((m: { id: string }) => m.id).sort();
+      } else if (Array.isArray(data)) {
+        models = data.map((m: { id?: string; name?: string }) => m.id || m.name || '').filter(Boolean).sort();
+      }
+
+      if (models.length > 0) {
+        setAvailableModels(models);
+        showToast(t("config.fetchModelsSuccess", { count: models.length }));
+      } else {
+        showToast(t("config.fetchModelsFailed"), "error");
+      }
+    } catch {
+      showToast(t("config.fetchModelsFailed"), "error");
+    } finally {
+      setIsFetchingModels(false);
+    }
+  }, [requestUrl, apiKey, t, showToast]);
 
   // Preset handlers
   const handleLoadPreset = useCallback((index: string) => {
@@ -351,7 +421,34 @@ export function PerfTestPage() {
                 <Input id="apiKey" type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder={t("config.apiKeyPlaceholder")} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="modelName">{t("config.modelName")}</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="modelName">{t("config.modelName")}</Label>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={fetchModels}
+                    disabled={isFetchingModels}
+                  >
+                    {isFetchingModels ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="size-3" />
+                    )}
+                    {isFetchingModels ? t("config.fetchingModels") : t("config.fetchModels")}
+                  </Button>
+                </div>
+                {availableModels.length > 0 && (
+                  <select
+                    className="h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    value={availableModels.includes(modelName) ? modelName : ""}
+                    onChange={e => { if (e.target.value) setModelName(e.target.value); }}
+                  >
+                    <option value="">{t("config.selectModel")}</option>
+                    {availableModels.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                )}
                 <Input id="modelName" value={modelName} onChange={e => setModelName(e.target.value)} placeholder={t("config.modelNamePlaceholder")} />
               </div>
             </CardContent>

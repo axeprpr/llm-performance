@@ -26,6 +26,12 @@ const zh: Record<LocaleKeys, string> = {
   "config.apiKeyPlaceholder": "sk-...",
   "config.modelName": "模型名称",
   "config.modelNamePlaceholder": "gpt-4o",
+  "config.fetchModels": "获取",
+  "config.fetchingModels": "获取中...",
+  "config.fetchModelsSuccess": "已加载 {count} 个模型",
+  "config.fetchModelsFailed": "获取模型列表失败，请手动输入",
+  "config.selectModel": "选择模型",
+  "config.manualInput": "或手动输入",
 
   // Presets
   "preset.title": "模型预设",
