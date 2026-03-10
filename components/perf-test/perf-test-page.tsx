@@ -405,7 +405,7 @@ export function PerfTestPage() {
               </div>
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="modelName">{t("config.modelName")}</Label>
+                  <Label>{t("config.modelName")}</Label>
                   <Button
                     variant="ghost"
                     size="xs"
@@ -420,19 +420,16 @@ export function PerfTestPage() {
                     {isFetchingModels ? t("config.fetchingModels") : t("config.fetchModels")}
                   </Button>
                 </div>
-                {availableModels.length > 0 && (
-                  <Select value={modelName} onValueChange={(v) => { if (v) setModelName(v); }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("config.selectModel")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableModels.map(m => (
-                        <SelectItem key={m} value={m}>{m}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                <Input id="modelName" value={modelName} onChange={e => setModelName(e.target.value)} placeholder={t("config.modelNamePlaceholder")} />
+                <Select value={modelName || undefined} onValueChange={(v) => { if (v) setModelName(v); }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("config.selectModel")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableModels.map(m => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
