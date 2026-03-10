@@ -56,6 +56,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/shared/empty-state";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, ChartTooltip, Filler);
 
@@ -414,16 +421,16 @@ export function PerfTestPage() {
                   </Button>
                 </div>
                 {availableModels.length > 0 && (
-                  <select
-                    className="h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                    value={availableModels.includes(modelName) ? modelName : ""}
-                    onChange={e => { if (e.target.value) setModelName(e.target.value); }}
-                  >
-                    <option value="">{t("config.selectModel")}</option>
-                    {availableModels.map(m => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
+                  <Select value={modelName} onValueChange={(v) => { if (v) setModelName(v); }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("config.selectModel")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableModels.map(m => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
                 <Input id="modelName" value={modelName} onChange={e => setModelName(e.target.value)} placeholder={t("config.modelNamePlaceholder")} />
               </div>
@@ -442,16 +449,16 @@ export function PerfTestPage() {
               <div className="space-y-1.5">
                 <Label>{t("preset.saved")}</Label>
                 <div className="flex gap-2">
-                  <select
-                    className="h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                    value={selectedPreset}
-                    onChange={e => handleLoadPreset(e.target.value)}
-                  >
-                    <option value="">{t("preset.select")}</option>
-                    {presets.map((p, i) => (
-                      <option key={i} value={i}>{p.name}</option>
-                    ))}
-                  </select>
+                  <Select value={selectedPreset} onValueChange={(v) => { if (v) handleLoadPreset(v); }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("preset.select")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {presets.map((p, i) => (
+                        <SelectItem key={i} value={String(i)}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Button variant="outline" size="icon" onClick={handleDeletePreset}>
                     <Trash2 className="size-3.5" />
                   </Button>
