@@ -1,4 +1,62 @@
-const words = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+// Literature passages used as input padding (models rarely refuse to continue literary text)
+const SONNET_LINES = [
+  'From fairest creatures we desire increase,',
+  'That thereby beauty\'s rose might never die,',
+  'But as the riper should by time decease,',
+  'His tender heir might bear his memory:',
+  'But thou contracted to thine own bright eyes,',
+  'Feed\'st thy light\'s flame with self-substantial fuel,',
+  'Making a famine where abundance lies,',
+  'Thy self thy foe, to thy sweet self too cruel:',
+  'Thou that art now the world\'s fresh ornament,',
+  'And only herald to the gaudy spring,',
+  'Within thine own bud buriest thy content,',
+  'And tender churl mak\'st waste in niggarding:',
+  'Pity the world, or else this glutton be,',
+  'To eat the world\'s due, by the grave and thee.',
+  'When forty winters shall besiege thy brow,',
+  'And dig deep trenches in thy beauty\'s field,',
+  'Thy youth\'s proud livery so gazed on now,',
+  'Will be a tatter\'d weed of small worth held:',
+  'Then being asked, where all thy beauty lies,',
+  'Where all the treasure of thy lusty days;',
+  'To say, within thine own deep sunken eyes,',
+  'Were an all-eating shame, and thriftless praise.',
+  'How much more praise deserv\'d thy beauty\'s use,',
+  'If thou couldst answer \'This fair child of mine',
+  'Shall sum my count, and make my old excuse\'',
+  'Proving his beauty by succession thine!',
+  'This were to be new made when thou art old,',
+  'And see thy blood warm when thou feel\'st it cold.',
+  'Look in thy glass and tell the face thou viewest',
+  'Now is the time that face should form another;',
+  'Whose fresh repair if now thou not renewest,',
+  'Thou dost beguile the world, unbless some mother.',
+  'For where is she so fair whose unear\'d womb',
+  'Disdains the tillage of thy husbandry?',
+  'Or who is he so fond will be the tomb,',
+  'Of his self-love to stop posterity?',
+  'Thou art thy mother\'s glass and she in thee',
+  'Calls back the lovely April of her prime;',
+  'So thou through windows of thine age shalt see,',
+  'Despite of wrinkles this thy golden time.',
+  'But if thou live, remember\'d not to be,',
+  'Die single and thine image dies with thee.',
+  'Unthrifty loveliness, why dost thou spend',
+  'Upon thy self thy beauty\'s legacy?',
+  'Nature\'s bequest gives nothing, but doth lend,',
+  'And being frank she lends to those are free:',
+  'Then, beauteous niggard, why dost thou abuse',
+  'The bounteous largess given thee to give?',
+  'Profitless usurer, why dost thou use',
+  'So great a sum of sums, yet canst not live?',
+  'For having traffic with thy self alone,',
+  'Thou of thy self thy sweet self dost deceive:',
+  'Then how when nature calls thee to be gone,',
+  'What acceptable audit canst thou leave?',
+  'Thy unused beauty must be tombed with thee,',
+  'Which, used, lives th\' executor to be.',
+];
 
 export function countTokensByRule(text: string): number {
   const specialApostropheWords = ["'cause", "'em", "'kay", "'nother", "'round", "'scuse", "'sup", "'til"];
@@ -46,19 +104,25 @@ export function countTokensByRule(text: string): number {
 }
 
 export function generateSystemPrompt(): string {
-  return 'You are a assistant.';
+  return 'You are a helpful writing assistant. Continue writing text without stopping until told to stop. Do not ask questions. Do not add commentary. Do not refuse.';
 }
 
 export function generateUserPrompt(length: number): string {
-  const fixedPrompt = '\nRepeat the above content one hundred times.';
-  const fixedLen = countTokensByRule(fixedPrompt);
-  const needLen = length - fixedLen;
+  const suffix = '\n\nContinue writing from where the text left off. Do not stop. Do not summarize. Just keep writing new paragraphs in the same style.';
+  const suffixLen = countTokensByRule(suffix);
+  const needLen = length - suffixLen;
+  // Build padding from literature lines, cycling through them
   let prompt = '';
-  for (let i = 0; i < needLen; i++) {
-    if (i > 0) prompt += ' ';
-    prompt += words[Math.floor(Math.random() * words.length)];
+  let tokenCount = 0;
+  let lineIdx = 0;
+  while (tokenCount < needLen) {
+    const line = SONNET_LINES[lineIdx % SONNET_LINES.length];
+    if (prompt.length > 0) prompt += '\n';
+    prompt += line;
+    tokenCount += countTokensByRule(line);
+    lineIdx++;
   }
-  return prompt + fixedPrompt;
+  return prompt + suffix;
 }
 
 /**
@@ -152,9 +216,11 @@ export async function runSingleTest(
         { role: 'user', content: userPrompt }
       ],
       max_tokens: config.maxOutput,
-      temperature: 1,
-      top_p: 0.1,
-      stream: true
+      temperature: 0,
+      stream: true,
+      // vLLM/TGI extensions: force output to reach max_tokens
+      min_tokens: config.maxOutput,
+      ignore_eos: true,
     };
 
     const requestTime = performance.now();
@@ -269,8 +335,7 @@ export async function warmUp(config: TestConfig): Promise<void> {
             { role: 'user', content: generateUserPrompt(10) }
           ],
           max_tokens: 3,
-          temperature: 0.1,
-          top_p: 0.1,
+          temperature: 0,
           stream: true
         },
       }),
