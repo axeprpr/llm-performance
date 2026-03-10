@@ -21,7 +21,7 @@ const zh: Record<LocaleKeys, string> = {
   // API Config
   "config.api": "API 配置",
   "config.requestUrl": "请求地址",
-  "config.requestUrlPlaceholder": "https://api.openai.com 或完整的 /v1/chat/completions 地址",
+  "config.requestUrlPlaceholder": "https://api.openai.com",
   "config.requestUrlTip": "输入基础地址即可，会自动补全 /v1/chat/completions",
   "config.apiKey": "API 密钥",
   "config.apiKeyPlaceholder": "sk-...",

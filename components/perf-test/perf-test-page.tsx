@@ -420,11 +420,11 @@ export function PerfTestPage() {
                     {isFetchingModels ? t("config.fetchingModels") : t("config.fetchModels")}
                   </Button>
                 </div>
-                <Select value={modelName || undefined} onValueChange={(v) => { if (v) setModelName(v); }}>
+                <Select value={modelName || undefined} onValueChange={(v) => { if (v) setModelName(v); }} disabled={availableModels.length === 0}>
                   <SelectTrigger>
                     <SelectValue placeholder={t("config.selectModel")} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent side="bottom" alignItemWithTrigger={false}>
                     {availableModels.map(m => (
                       <SelectItem key={m} value={m}>{m}</SelectItem>
                     ))}
@@ -446,11 +446,11 @@ export function PerfTestPage() {
               <div className="space-y-1.5">
                 <Label>{t("preset.saved")}</Label>
                 <div className="flex gap-2">
-                  <Select value={selectedPreset} onValueChange={(v) => { if (v) handleLoadPreset(v); }}>
+                  <Select value={selectedPreset} onValueChange={(v) => { if (v) handleLoadPreset(v); }} disabled={presets.length === 0}>
                     <SelectTrigger>
                       <SelectValue placeholder={t("preset.select")} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent side="bottom" alignItemWithTrigger={false}>
                       {presets.map((p, i) => (
                         <SelectItem key={i} value={String(i)}>{p.name}</SelectItem>
                       ))}
