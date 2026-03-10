@@ -32,7 +32,7 @@ import { Line } from "react-chartjs-2";
 
 import { useLocale, LOCALES } from "@/lib/i18n/context";
 import type { TestRowData, TestConfig } from "@/lib/test-engine";
-import { runSingleTest, warmUp } from "@/lib/test-engine";
+import { runSingleTest, warmUp, normalizeModelsUrl } from "@/lib/test-engine";
 import { getPresets, addOrUpdatePreset, deletePreset, type ModelPreset } from "@/lib/presets";
 
 import { Button } from "@/components/ui/button";
@@ -105,7 +105,7 @@ export function PerfTestPage() {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
-  // Fetch models from /models endpoint
+  // Fetch models from /models endpoint (via server proxy to avoid CORS)
   const fetchModels = useCallback(async () => {
     if (!requestUrl.trim()) {
       showToast(t("valid.fillRequired"), "error");
@@ -113,44 +113,19 @@ export function PerfTestPage() {
     }
     setIsFetchingModels(true);
     try {
-      // Derive base URL: strip /chat/completions or similar suffix to get /models
-      let baseUrl = requestUrl.trim();
-      // Remove trailing slash
-      baseUrl = baseUrl.replace(/\/+$/, '');
-      // Try to find the base: remove /chat/completions, /completions, etc.
-      const suffixes = ['/chat/completions', '/completions', '/v1/chat/completions', '/v1/completions'];
-      let modelsUrl = '';
-      for (const suffix of suffixes) {
-        if (baseUrl.endsWith(suffix)) {
-          modelsUrl = baseUrl.slice(0, -suffix.length) + '/v1/models';
-          break;
-        }
-      }
-      // If URL ends with /v1, just append /models
-      if (!modelsUrl && baseUrl.endsWith('/v1')) {
-        modelsUrl = baseUrl + '/models';
-      }
-      // Fallback: replace last path segment with "models"
-      if (!modelsUrl) {
-        const url = new URL(baseUrl);
-        const pathParts = url.pathname.split('/').filter(Boolean);
-        if (pathParts.length > 0) {
-          pathParts[pathParts.length - 1] = 'models';
-        } else {
-          pathParts.push('models');
-        }
-        url.pathname = '/' + pathParts.join('/');
-        modelsUrl = url.toString();
-      }
-
+      const modelsUrl = normalizeModelsUrl(requestUrl);
       const headers: Record<string, string> = {};
       if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
-      const resp = await fetch(modelsUrl, { headers });
+      const resp = await fetch('/api/models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: modelsUrl, headers }),
+      });
+
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
 
-      // OpenAI format: { data: [{ id: "model-name" }, ...] }
       let models: string[] = [];
       if (data.data && Array.isArray(data.data)) {
         models = data.data.map((m: { id: string }) => m.id).sort();
@@ -415,6 +390,7 @@ export function PerfTestPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="requestUrl">{t("config.requestUrl")}</Label>
                 <Input id="requestUrl" value={requestUrl} onChange={e => setRequestUrl(e.target.value)} placeholder={t("config.requestUrlPlaceholder")} />
+                <p className="text-xs text-muted-foreground">{t("config.requestUrlTip")}</p>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="apiKey">{t("config.apiKey")}</Label>

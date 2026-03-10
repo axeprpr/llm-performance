@@ -61,6 +61,42 @@ export function generateUserPrompt(length: number): string {
   return prompt + fixedPrompt;
 }
 
+/**
+ * Normalize a user-entered URL to a full /v1/chat/completions endpoint.
+ * Accepts:
+ *   - https://api.example.com
+ *   - https://api.example.com/v1
+ *   - https://api.example.com/v1/chat/completions
+ *   - https://api.example.com:8080
+ */
+export function normalizeChatUrl(raw: string): string {
+  let url = raw.trim().replace(/\/+$/, '');
+  if (url.endsWith('/chat/completions')) return url;
+  if (url.endsWith('/completions')) {
+    // e.g. /v1/completions -> /v1/chat/completions
+    return url.replace(/\/completions$/, '/chat/completions');
+  }
+  if (url.endsWith('/v1')) return url + '/chat/completions';
+  // No known suffix — assume it's a base URL
+  return url + '/v1/chat/completions';
+}
+
+/**
+ * Derive /v1/models URL from a user-entered URL.
+ */
+export function normalizeModelsUrl(raw: string): string {
+  let url = raw.trim().replace(/\/+$/, '');
+  // Strip known suffixes to get base
+  for (const suffix of ['/chat/completions', '/completions']) {
+    if (url.endsWith(suffix)) {
+      url = url.slice(0, -suffix.length);
+      break;
+    }
+  }
+  if (url.endsWith('/v1')) return url + '/models';
+  return url + '/v1/models';
+}
+
 export interface TestRowData {
   inputLength: number;
   prefillTime: string;
@@ -105,29 +141,40 @@ export async function runSingleTest(
   let outputFinishTime: number | undefined;
 
   try {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (config.apiKey) headers['Authorization'] = `Bearer ${config.apiKey}`;
+    const targetUrl = normalizeChatUrl(config.requestUrl);
+    const upstreamHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (config.apiKey) upstreamHeaders['Authorization'] = `Bearer ${config.apiKey}`;
+
+    const requestBody = {
+      model: config.modelName,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      max_tokens: config.maxOutput,
+      temperature: 1,
+      top_p: 0.1,
+      stream: true
+    };
 
     const requestTime = performance.now();
 
-    const response = await fetch(config.requestUrl, {
+    // Use server-side proxy to avoid CORS
+    const response = await fetch('/api/proxy', {
       method: 'POST',
-      headers,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: config.modelName,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        max_tokens: config.maxOutput,
-        temperature: 1,
-        top_p: 0.1,
-        stream: true
+        url: targetUrl,
+        headers: upstreamHeaders,
+        body: requestBody,
       }),
       signal
     });
 
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => '');
+      throw new Error(`HTTP ${response.status}: ${errBody}`);
+    }
 
     const reader = response.body!.getReader();
     const decoder = new TextDecoder('utf-8');
@@ -205,22 +252,28 @@ export async function runSingleTest(
 
 export async function warmUp(config: TestConfig): Promise<void> {
   try {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (config.apiKey) headers['Authorization'] = `Bearer ${config.apiKey}`;
-    const resp = await fetch(config.requestUrl, {
+    const targetUrl = normalizeChatUrl(config.requestUrl);
+    const upstreamHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (config.apiKey) upstreamHeaders['Authorization'] = `Bearer ${config.apiKey}`;
+
+    const resp = await fetch('/api/proxy', {
       method: 'POST',
-      headers,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: config.modelName,
-        messages: [
-          { role: 'system', content: generateSystemPrompt() },
-          { role: 'user', content: generateUserPrompt(10) }
-        ],
-        max_tokens: 3,
-        temperature: 0.1,
-        top_p: 0.1,
-        stream: true
-      })
+        url: targetUrl,
+        headers: upstreamHeaders,
+        body: {
+          model: config.modelName,
+          messages: [
+            { role: 'system', content: generateSystemPrompt() },
+            { role: 'user', content: generateUserPrompt(10) }
+          ],
+          max_tokens: 3,
+          temperature: 0.1,
+          top_p: 0.1,
+          stream: true
+        },
+      }),
     });
     if (resp.body) {
       const reader = resp.body.getReader();

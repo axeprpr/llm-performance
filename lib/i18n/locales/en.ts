@@ -19,7 +19,8 @@ const en = {
   // API Config
   "config.api": "API Configuration",
   "config.requestUrl": "Request URL",
-  "config.requestUrlPlaceholder": "https://api.openai.com/v1/chat/completions",
+  "config.requestUrlPlaceholder": "https://api.openai.com or full /v1/chat/completions URL",
+  "config.requestUrlTip": "Enter base URL or full endpoint. /v1/chat/completions will be auto-appended if needed.",
   "config.apiKey": "API Key",
   "config.apiKeyPlaceholder": "sk-...",
   "config.modelName": "Model Name",
